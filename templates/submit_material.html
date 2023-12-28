@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Submit Material</title>
+    <style>
+        .input-group { margin-bottom: 10px; }
+        .array-input-container { margin-bottom: 5px; }
+        .remove-btn { margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Submit New Material</h1>
+    <form id="materialForm" action="/submit_material" method="post">
+        <div class="input-group">
+            <label for="name">Material Name:</label><br>
+            <input type="text" id="name" name="name" required><br>
+        </div>
+        <div id="dynamicFields">
+            <!-- Dynamic fields will be added here -->
+        </div>
+        <button type="button" onclick="addScalarField()">Add Scalar Field</button>
+        <button type="button" onclick="addArrayField()">Add 2D Array Field</button><br><br>
+        <input type="submit" value="Submit">
+    </form>
+
+    <script>
+        var attributeTypes = JSON.parse('{{ attribute_types | safe }}');
+
+        function createAttributeTypeDropdown(name) {
+            var select = document.createElement("select");
+            select.name = name;
+
+            // Default blank option
+            var defaultOption = document.createElement("option");
+            defaultOption.value = "";
+            defaultOption.textContent = "-- Select an Attribute --";
+            select.appendChild(defaultOption);
+
+            // Existing attribute types
+            attributeTypes.forEach(function(type) {
+                var option = document.createElement("option");
+                option.value = type.name;
+                option.textContent = type.name;
+                select.appendChild(option);
+            });
+
+            // New attribute option
+            var newOption = document.createElement("option");
+            newOption.value = "new";
+            newOption.textContent = "New Attribute";
+            select.appendChild(newOption);
+
+            select.onchange = function() {
+                if (this.value === "new") {
+                    var newInput = document.createElement("input");
+                    newInput.type = "text";
+                    newInput.name = name; // Use the same name as the dropdown
+                    this.parentNode.replaceChild(newInput, this);
+                }
+            };
+
+
+            return select;
+        }
+
+
+        function addScalarField() {
+            var container = document.getElementById("dynamicFields");
+            var inputGroup = document.createElement("div");
+            inputGroup.className = "input-group";
+
+            var select = createAttributeTypeDropdown("scalarLabel[]");
+            var inputValue = document.createElement("input");
+            inputValue.type = "text";
+            inputValue.name = "scalarValue[]";
+
+            var removeBtn = createRemoveButton(inputGroup, container);
+
+            inputGroup.appendChild(select);
+            inputGroup.appendChild(inputValue);
+            inputGroup.appendChild(removeBtn);
+            container.appendChild(inputGroup);
+        }
+
+        function addArrayField() {
+            var container = document.getElementById("dynamicFields");
+            var inputGroup = document.createElement("div");
+            inputGroup.className = "input-group";
+
+            var select1 = createAttributeTypeDropdown("axisName1[]");
+            var select2 = createAttributeTypeDropdown("axisName2[]");
+
+            var valueList = document.createElement("ul"); // List to display entered value pairs
+
+            var hiddenArrayInput = createHiddenInput();
+            var arrayInputs = createArrayInputs(hiddenArrayInput, valueList); // Pass valueList to function
+
+            var removeBtn = createRemoveButton(inputGroup, container);
+
+            inputGroup.appendChild(select1);
+            inputGroup.appendChild(select2);
+            arrayInputs.forEach(function(input) {
+                inputGroup.appendChild(input);
+            });
+            inputGroup.appendChild(hiddenArrayInput);
+            inputGroup.appendChild(valueList); // Add the value list to the input group
+            inputGroup.appendChild(removeBtn);
+            container.appendChild(inputGroup);
+        }
+
+        function createArrayInputs(hiddenInput, valueList) {
+            var arrayInput1 = document.createElement("input");
+            arrayInput1.type = "text";
+            arrayInput1.placeholder = "Value 1";
+
+            var arrayInput2 = document.createElement("input");
+            arrayInput2.type = "text";
+            arrayInput2.placeholder = "Value 2";
+
+            var addButton = document.createElement("button");
+            addButton.textContent = "Add Pair";
+            addButton.type = "button";
+            addButton.onclick = function(e) {
+                e.preventDefault(); // Prevent form submission
+
+                var value1 = arrayInput1.value;
+                var value2 = arrayInput2.value;
+                if (value1 && value2) {
+                    var currentValue = hiddenInput.value ? hiddenInput.value.split(';') : [];
+                    currentValue.push(value1 + "," + value2);
+                    hiddenInput.value = currentValue.join(';');
+
+                    var listItem = document.createElement("li");
+                    listItem.textContent = "(" + value1 + ", " + value2 + ")";
+                    valueList.appendChild(listItem); // Add the value pair to the list
+
+                    arrayInput1.value = "";
+                    arrayInput2.value = "";
+                }
+            };
+
+            return [arrayInput1, arrayInput2, addButton];
+        }
+
+
+        function createHiddenInput() {
+            var hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = "dynamicField[]";
+            return hiddenInput;
+        }
+
+        function createRemoveButton(inputGroup, container) {
+            var removeBtn = document.createElement("button");
+            removeBtn.className = "remove-btn";
+            removeBtn.textContent = "Remove";
+            removeBtn.type = "button";
+            removeBtn.onclick = function() {
+                container.removeChild(inputGroup);
+            };
+            return removeBtn;
+        }
+    </script>
+</body>
+</html>
