@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_pymongo import PyMongo
 from bson import json_util
+from bson.objectid import ObjectId
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Change this to a random secret key
@@ -61,4 +62,34 @@ def submit_material():
     attribute_types_serializable = json_util.dumps(attribute_types)
     return render_template('submit_material.html', attribute_types=attribute_types_serializable)
 
+@app.route('/admin')
+def admin():
+    # Fetch all materials submitted by users
+    materials = list(mongo.db.materials.find())
+    return render_template('admin.html', materials=materials)
 
+@app.route('/reject_material/<material_id>', methods=['POST'])
+def reject_material(material_id):
+    # Fetch the material from the materials collection
+    material = mongo.db.materials.find_one({'_id': ObjectId(material_id)})
+
+    if material:
+        # Move the material to the rejected materials collection
+        mongo.db.rejected_materials.insert_one(material)
+        mongo.db.materials.delete_one({'_id': ObjectId(material_id)})
+        return {'success': True}
+    else:
+        return {'success': False}, 404
+
+@app.route('/accept_material/<material_id>', methods=['POST'])
+def accept_material(material_id):
+    # Fetch the material from the submitted materials collection
+    material = mongo.db.materials.find_one({'_id': ObjectId(material_id)})
+
+    if material:
+        # Move the material to the final materials collection
+        mongo.db.final_materials.insert_one(material)
+        mongo.db.materials.delete_one({'_id': ObjectId(material_id)})
+        return {'success': True}
+    else:
+        return {'success': False}, 404

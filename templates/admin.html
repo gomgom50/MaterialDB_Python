@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Page</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function setupChart(canvasId, data, axisName1, axisName2) {
+            var ctx = document.getElementById(canvasId).getContext('2d');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: axisName1 + "/" + axisName2,
+                        data: data.map(pair => ({ x: pair[0], y: pair[1] })),
+                        backgroundColor: 'rgba(54, 162, 235, 1)',
+                        borderColor: 'rgb(54, 162, 235, 1)',
+                        tension: 0
+                    }]
+                },
+                options: {
+                    responsive: true, // Chart will resize in its container
+                    maintainAspectRatio: false, // Allows chart to resize out of original aspect ratio
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: axisName1 // Axis 1 name
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: axisName2 // Axis 2 name
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
+</head>
+<body>
+    <h1>Material Submissions</h1>
+    <ul>
+        {% for material in materials %}
+            <li>
+                <h3>{{ material.name }}</h3>
+                <p>Properties:</p>
+                <ul>
+                    {% for key, value in material.items() %}
+                        {% if key != '_id' and key != 'name' %}
+                            {% if value is mapping and 'axis_name' in value and 'values' in value %}
+                                <!-- This is a 2D array -->
+                                <li>{{ key }}/{{ value['axis_name'] }}:
+                                    <div style="width:400px; height:400px;">
+                                        <canvas id="chart-{{ loop.index }}-{{ key }}"></canvas>
+                                    </div>
+                                    <script>
+                                        var dataArray = {{ value['values'] | tojson | safe }};
+                                        setupChart('chart-{{ loop.index }}-{{ key }}', dataArray, '{{ key }}', '{{ value['axis_name'] }}');
+                                    </script>
+                                </li>
+                            {% else %}
+                                <!-- This is a scalar -->
+                                <li>{{ key }}: {{ value }}</li>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+                <button onclick="acceptMaterial('{{ material._id }}')">Accept</button>
+                <button onclick="rejectMaterial('{{ material._id }}')">Reject</button>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <script>
+        function acceptMaterial(materialId) {
+            fetch('/accept_material/' + materialId, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        alert("Material accepted!");
+                        location.reload();
+                    } else {
+                        alert("Error accepting material.");
+                    }
+                });
+        }
+
+        function rejectMaterial(materialId) {
+            fetch('/reject_material/' + materialId, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success) {
+                        alert("Material rejected!");
+                        location.reload();
+                    } else {
+                        alert("Error rejecting material.");
+                    }
+                });
+        }
+
+
+    </script>
+</body>
+</html>
